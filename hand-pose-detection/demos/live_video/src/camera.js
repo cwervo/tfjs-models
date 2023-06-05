@@ -14,14 +14,19 @@
  * limitations under the License.
  * =============================================================================
  */
-import * as scatter from 'scatter-gl';
+import * as scatter from "scatter-gl";
 
-import * as params from './shared/params';
-import {isMobile} from './shared/util';
+import * as params from "./shared/params";
+import { isMobile } from "./shared/util";
 
 // These anchor points allow the hand pointcloud to resize according to its
 // position in the input.
-const ANCHOR_POINTS = [[0, 0, 0], [0, 0.1, 0], [-0.1, 0, 0], [-0.1, -0.1, 0]];
+const ANCHOR_POINTS = [
+  [0, 0, 0],
+  [0, 0.1, 0],
+  [-0.1, 0, 0],
+  [-0.1, -0.1, 0],
+];
 
 const fingerLookupIndices = {
   thumb: [0, 1, 2, 3, 4],
@@ -32,11 +37,26 @@ const fingerLookupIndices = {
 }; // for rendering each finger as a polyline
 
 const connections = [
-  [0, 1], [1, 2], [2, 3], [3,4],
-  [0, 5], [5, 6], [6, 7], [7, 8],
-  [0, 9], [9, 10], [10, 11], [11, 12],
-  [0, 13], [13,14], [14, 15], [15, 16],
-  [0, 17], [17, 18],[18, 19], [19,20]
+  [0, 1],
+  [1, 2],
+  [2, 3],
+  [3, 4],
+  [0, 5],
+  [5, 6],
+  [6, 7],
+  [7, 8],
+  [0, 9],
+  [9, 10],
+  [10, 11],
+  [11, 12],
+  [0, 13],
+  [13, 14],
+  [14, 15],
+  [15, 16],
+  [0, 17],
+  [17, 18],
+  [18, 19],
+  [19, 20],
 ];
 
 function createScatterGLContext(selectors) {
@@ -44,22 +64,26 @@ function createScatterGLContext(selectors) {
   return {
     scatterGLEl,
     scatterGL: new scatter.ScatterGL(scatterGLEl, {
-      'rotateOnStart': true,
-      'selectEnabled': false,
-      'styles': {polyline: {defaultOpacity: 1, deselectedOpacity: 1}}
+      rotateOnStart: true,
+      selectEnabled: false,
+      styles: { polyline: { defaultOpacity: 1, deselectedOpacity: 1 } },
     }),
     scatterGLHasInitialized: false,
   };
 }
 
-const scatterGLCtxtLeftHand = createScatterGLContext('#scatter-gl-container-left');
-const scatterGLCtxtRightHand = createScatterGLContext('#scatter-gl-container-right');
+const scatterGLCtxtLeftHand = createScatterGLContext(
+  "#scatter-gl-container-left"
+);
+const scatterGLCtxtRightHand = createScatterGLContext(
+  "#scatter-gl-container-right"
+);
 
 export class Camera {
   constructor() {
-    this.video = document.getElementById('video');
-    this.canvas = document.getElementById('output');
-    this.ctx = this.canvas.getContext('2d');
+    this.video = document.getElementById("video");
+    this.canvas = document.getElementById("output");
+    this.ctx = this.canvas.getContext("2d");
   }
 
   /**
@@ -69,24 +93,26 @@ export class Camera {
   static async setupCamera(cameraParam) {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error(
-          'Browser API navigator.mediaDevices.getUserMedia not available');
+        "Browser API navigator.mediaDevices.getUserMedia not available"
+      );
     }
 
-    const {targetFPS, sizeOption} = cameraParam;
+    const { targetFPS, sizeOption } = cameraParam;
     const $size = params.VIDEO_SIZE[sizeOption];
     const videoConfig = {
-      'audio': false,
-      'video': {
-        facingMode: 'user',
+      audio: false,
+      video: {
+        facingMode: "user",
         // Only setting the video to a specified size for large screen, on
         // mobile devices accept the default size.
-        width: isMobile() ? params.VIDEO_SIZE['360 X 270'].width : $size.width,
-        height: isMobile() ? params.VIDEO_SIZE['360 X 270'].height :
-                             $size.height,
+        width: isMobile() ? params.VIDEO_SIZE["360 X 270"].width : $size.width,
+        height: isMobile()
+          ? params.VIDEO_SIZE["360 X 270"].height
+          : $size.height,
         frameRate: {
           ideal: targetFPS,
-        }
-      }
+        },
+      },
     };
 
     const stream = await navigator.mediaDevices.getUserMedia(videoConfig);
@@ -110,7 +136,7 @@ export class Camera {
 
     camera.canvas.width = videoWidth;
     camera.canvas.height = videoHeight;
-    const canvasContainer = document.querySelector('.canvas-wrapper');
+    const canvasContainer = document.querySelector(".canvas-wrapper");
     canvasContainer.style = `width: ${videoWidth}px; height: ${videoHeight}px`;
 
     // Because the image from camera is mirrored, need to flip horizontally.
@@ -118,12 +144,14 @@ export class Camera {
     camera.ctx.scale(-1, 1);
 
     for (const ctxt of [scatterGLCtxtLeftHand, scatterGLCtxtRightHand]) {
-      ctxt.scatterGLEl.style =
-          `width: ${videoWidth / 2}px; height: ${videoHeight / 2}px;`;
+      ctxt.scatterGLEl.style = `width: ${videoWidth / 2}px; height: ${
+        videoHeight / 2
+      }px;`;
       ctxt.scatterGL.resize();
 
-      ctxt.scatterGLEl.style.display =
-          params.STATE.modelConfig.render3D ? 'inline-block' : 'none';
+      ctxt.scatterGLEl.style.display = params.STATE.modelConfig.render3D
+        ? "inline-block"
+        : "none";
     }
 
     return camera;
@@ -131,7 +159,12 @@ export class Camera {
 
   drawCtx() {
     this.ctx.drawImage(
-        this.video, 0, 0, this.video.videoWidth, this.video.videoHeight);
+      this.video,
+      0,
+      0,
+      this.video.videoWidth,
+      this.video.videoHeight
+    );
   }
 
   clearCtx() {
@@ -178,7 +211,7 @@ export class Camera {
       this.drawKeypoints3D(hand.keypoints3D, hand.handedness, ctxt);
     } else {
       // Clear scatter plot.
-      this.drawKeypoints3D([], '', ctxt);
+      this.drawKeypoints3D([], "", ctxt);
     }
   }
 
@@ -187,22 +220,44 @@ export class Camera {
    * @param keypoints A list of keypoints.
    * @param handedness Label of hand (either Left or Right).
    */
-   drawKeypoints(keypoints, handedness) {
+  drawKeypoints(keypoints, handedness) {
     const keypointsArray = keypoints;
-    this.ctx.fillStyle = handedness === 'Left' ? 'Red' : 'Blue';
-    this.ctx.strokeStyle = 'White';
+    const fingertips = [4, 8, 12, 16, 20];
+    this.ctx.fillStyle = handedness === "Left" ? "Red" : "Blue";
+    this.ctx.strokeStyle = "White";
     this.ctx.lineWidth = params.DEFAULT_LINE_WIDTH;
 
     for (let i = 0; i < keypointsArray.length; i++) {
       const y = keypointsArray[i].x;
       const x = keypointsArray[i].y;
-      this.drawPoint(x - 2, y - 2, 3);
+
+      var radius = 0.5 + i * 0.5;
+      var color = "white";
+
+      if (fingertips.includes(i)) {
+        radius += 0.25;
+        color = "rgb(255, 0, 255";
+      }
+
+      this.ctx.fillStyle = color;
+
+      this.drawPoint(x - 2, y - 2, radius);
     }
 
     const fingers = Object.keys(fingerLookupIndices);
+    console.log("fingys: ", fingers);
+
     for (let i = 0; i < fingers.length; i++) {
       const finger = fingers[i];
-      const points = fingerLookupIndices[finger].map(idx => keypoints[idx]);
+      const points = fingerLookupIndices[finger].map((idx) => keypoints[idx]);
+
+      const indexAsColor = Math.floor(255 / i);
+
+      this.ctx.strokeStyle = `rgb(
+        ${indexAsColor},
+        0,
+        127)`;
+
       this.drawPath(points, false);
     }
   }
@@ -229,18 +284,23 @@ export class Camera {
 
   drawKeypoints3D(keypoints, handedness, ctxt) {
     const scoreThreshold = params.STATE.modelConfig.scoreThreshold || 0;
-    const pointsData =
-        keypoints.map(keypoint => ([-keypoint.x, -keypoint.y, -keypoint.z]));
+    const pointsData = keypoints.map((keypoint) => [
+      -keypoint.x,
+      -keypoint.y,
+      -keypoint.z,
+    ]);
 
-    const dataset =
-        new scatter.ScatterGL.Dataset([...pointsData, ...ANCHOR_POINTS]);
+    const dataset = new scatter.ScatterGL.Dataset([
+      ...pointsData,
+      ...ANCHOR_POINTS,
+    ]);
 
     ctxt.scatterGL.setPointColorer((i) => {
       if (keypoints[i] == null || keypoints[i].score < scoreThreshold) {
         // hide anchor points and low-confident points.
-        return '#ffffff';
+        return "#ffffff";
       }
-      return handedness === 'Left' ? '#ff0000' : '#0000ff';
+      return handedness === "Left" ? "#ff0000" : "#0000ff";
     });
 
     if (!ctxt.scatterGLHasInitialized) {
@@ -248,7 +308,7 @@ export class Camera {
     } else {
       ctxt.scatterGL.updateDataset(dataset);
     }
-    const sequences = connections.map(pair => ({indices: pair}));
+    const sequences = connections.map((pair) => ({ indices: pair }));
     ctxt.scatterGL.setSequences(sequences);
     ctxt.scatterGLHasInitialized = true;
   }

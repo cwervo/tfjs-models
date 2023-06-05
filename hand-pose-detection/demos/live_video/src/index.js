@@ -15,44 +15,51 @@
  * =============================================================================
  */
 
-import '@tensorflow/tfjs-backend-webgl';
-import * as mpHands from '@mediapipe/hands';
+import "@tensorflow/tfjs-backend-webgl";
+import * as mpHands from "@mediapipe/hands";
 
-import * as tfjsWasm from '@tensorflow/tfjs-backend-wasm';
+import * as tfjsWasm from "@tensorflow/tfjs-backend-wasm";
 
 tfjsWasm.setWasmPaths(
-    `https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@${
-        tfjsWasm.version_wasm}/dist/`);
+  `https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@${tfjsWasm.version_wasm}/dist/`
+);
 
-import * as handdetection from '@tensorflow-models/hand-pose-detection';
+import * as handdetection from "@tensorflow-models/hand-pose-detection";
 
-import {Camera} from './camera';
-import {setupDatGui} from './option_panel';
-import {STATE} from './shared/params';
-import {setupStats} from './shared/stats_panel';
-import {setBackendAndEnvFlags} from './shared/util';
+import { Camera } from "./camera";
+import { setupDatGui } from "./option_panel";
+import { STATE } from "./shared/params";
+import { setupStats } from "./shared/stats_panel";
+import { setBackendAndEnvFlags } from "./shared/util";
+import { write } from "fs";
 
 let detector, camera, stats;
-let startInferenceTime, numInferences = 0;
-let inferenceTimeSum = 0, lastPanelUpdate = 0;
+let startInferenceTime,
+  numInferences = 0;
+let inferenceTimeSum = 0,
+  lastPanelUpdate = 0;
 let rafId;
+
+let miniWindow,
+  mouse = { x: 1, y: 1 };
+let indexFingerX = 0;
 
 async function createDetector() {
   switch (STATE.model) {
     case handdetection.SupportedModels.MediaPipeHands:
-      const runtime = STATE.backend.split('-')[0];
-      if (runtime === 'mediapipe') {
+      const runtime = STATE.backend.split("-")[0];
+      if (runtime === "mediapipe") {
         return handdetection.createDetector(STATE.model, {
           runtime,
           modelType: STATE.modelConfig.type,
           maxHands: STATE.modelConfig.maxNumHands,
-          solutionPath: `https://cdn.jsdelivr.net/npm/@mediapipe/hands@${mpHands.VERSION}`
+          solutionPath: `https://cdn.jsdelivr.net/npm/@mediapipe/hands@${mpHands.VERSION}`,
         });
-      } else if (runtime === 'tfjs') {
+      } else if (runtime === "tfjs") {
         return handdetection.createDetector(STATE.model, {
           runtime,
           modelType: STATE.modelConfig.type,
-          maxHands: STATE.modelConfig.maxNumHands
+          maxHands: STATE.modelConfig.maxNumHands,
         });
       }
   }
@@ -106,7 +113,9 @@ function endEstimateHandsStats() {
     inferenceTimeSum = 0;
     numInferences = 0;
     stats.customFpsPanel.update(
-        1000.0 / averageInferenceTime, 120 /* maxValue */);
+      1000.0 / averageInferenceTime,
+      120 /* maxValue */
+    );
     lastPanelUpdate = endInferenceTime;
   }
 }
@@ -131,9 +140,9 @@ async function renderResult() {
     // Detectors can throw errors, for example when using custom URLs that
     // contain a model that doesn't provide the expected output.
     try {
-      hands = await detector.estimateHands(
-          camera.video,
-          {flipHorizontal: false});
+      hands = await detector.estimateHands(camera.video, {
+        flipHorizontal: false,
+      });
     } catch (error) {
       detector.dispose();
       detector = null;
@@ -149,6 +158,8 @@ async function renderResult() {
   // different model. If during model change, the result is from an old model,
   // which shouldn't be rendered.
   if (hands && hands.length > 0 && !STATE.isModelChanged) {
+    // index_finger_mcp
+    indexFingerX = hands[0].keypoints3D[5].x;
     camera.drawResults(hands);
   }
 }
@@ -161,15 +172,15 @@ async function renderPrediction() {
   }
 
   rafId = requestAnimationFrame(renderPrediction);
-};
+}
 
 async function app() {
   // Gui content will change depending on which model is in the query string.
   const urlParams = new URLSearchParams(window.location.search);
-  if (!urlParams.has('model')) {
-    alert('Cannot find model in the query string.');
-    return;
-  }
+  // @cwervo: Actually can ignore urlParams, but don't feel like refactoring rn
+
+  // @cwervo: Make
+  launchWindows();
 
   await setupDatGui(urlParams);
 
@@ -182,6 +193,57 @@ async function app() {
   detector = await createDetector();
 
   renderPrediction();
-};
+}
+
+let x = `data:text/html;charset=utf-8,<title>Scratchpad</title><style>body {padding: 5%; font-size: 1.5em; font-family: Arial; }></style><body OnLoad='document.body.focus();' contenteditable spellcheck='true' ></body>`;
+let blah = `data:text/html;charset=utf-8,<title>Scratchpad</title><body OnLoad=document.body.focus() contenteditable spellcheck=true></body>`;
+
+function writeToWindow(win, base64URL) {
+  win.document.write(
+    `<head><title>👋🏼</title></head><iframe src="${base64URL}"
+            frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>
+      `
+  );
+}
+
+function launchWindows() {
+  // const windowFeatures = "left=100,top=100,width=320,height=320";
+  const windowFeatures = "width=400,height=400";
+  const handle = window.open("https://example.com", "window", windowFeatures);
+  if (!handle) {
+    new Error("window blocked :(");
+  }
+  miniWindow = handle;
+
+  writeToWindow(miniWindow, blah);
+
+  console.log(miniWindow);
+
+  getMousePosition();
+  moveWindow();
+}
+
+function getMousePosition() {
+  document.body.addEventListener("mousemove", ({ clientX, clientY }) => {
+    mouse = { x: clientX, y: clientY };
+    console.log(mouse);
+  });
+}
+
+function moveWindow() {
+  if (miniWindow) {
+    // const newX = Math.abs(indexFingerX * 10 * window.screen.width);
+    const newX = indexFingerX * 1000;
+    console.log(`moving to: ${newX}`);
+    miniWindow.moveBy(newX, 0);
+    // miniWindow.moveTo(
+    //   // window.screen.width * 0.5,
+    //   // Math.sin(performance.now()) * mouse.x * window.screen.height
+    //   newX,
+    // );
+  }
+  // miniWindow.focus();
+  window.requestAnimationFrame(moveWindow);
+}
 
 app();
